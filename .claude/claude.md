@@ -17,7 +17,7 @@ Act as a senior React Native engineer pairing with me. I own the decisions; you 
 ```
 src/
 ├── api/           HTTP client, endpoints, request/response types. No UI imports.
-├── store/         Global state (Zustand/Redux store setup, slices).
+├── store/         Redux Toolkit: store.ts, hooks.ts (typed hooks), slices/.
 ├── reducers/      Pure reducer functions shared across screens.
 ├── components/    Reusable UI used by 2+ screens. Each in its own folder.
 ├── hooks/         Reusable hooks (useDebounce, useAppState, …).
@@ -95,7 +95,14 @@ Choose the narrowest home that works, in this order:
 1. **Local `useState`** in the component that uses it (colocate first).
 2. **`useReducer`** when a component/hook has **4+ related state values** or transitions depend on each other. Reducer goes in the screen's `utils.ts`/`reducers` as a pure, typed function.
 3. **Screen hook** when several components in one screen share it.
-4. **Global store** only when 2+ screens need it. Read with **selectors** (`useStore(s => s.x)`), never the whole store.
+4. **Global store (Redux Toolkit)** only when 2+ screens need it.
+   - Use `createSlice`; no hand-written action types or switch reducers. Async work via `createAsyncThunk` or the screen hook.
+   - Always use the typed `useAppSelector` / `useAppDispatch` from `store/hooks.ts`. Select the narrowest slice of state (`s => s.prices.bySymbol[symbol]`), never a whole slice or the whole store.
+   - Derived data via `createSelector`; don't store it.
+   - Separate fast-changing data (live prices, timers) into its own slice from rarely-changing data, so ticks don't re-render unrelated UI.
+   - Batch high-frequency updates into one dispatch per event (e.g. one `pricesUpdated` per socket message).
+   - Persist only what must survive restart, via `store.subscribe` → AsyncStorage (debounced). No `redux-persist` unless asked.
+   - Business rules (limits, validation) live in the slice or thunk, not in components.
 
 - **Derived data is computed during render**, never stored in state and synced via `useEffect` + `setState`.
 - Server data: loading, error and empty states are required for every async view. Guard against stale responses (abort or request id).
